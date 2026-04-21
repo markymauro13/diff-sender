@@ -1,6 +1,6 @@
-# diff-sender
+# Context Sender
 
-Chrome extension to copy merge request diffs and Jira ticket details to your clipboard or download them as text files — optimized for pasting into LLMs.
+Chrome extension to copy diffs, PRs, and Jira ticket details to your clipboard or download them as text files — optimized for pasting into LLMs.
 
 ## How It Works
 
@@ -29,11 +29,11 @@ You can then paste the content into ChatGPT, Claude, or any other LLM for review
 
 1. Clone this repo:
    ```
-   git clone https://github.com/your-user/diff-sender.git
+   git clone https://github.com/your-user/context-sender.git
    ```
 2. Open Chrome and go to `chrome://extensions/`
 3. Enable **Developer mode** (toggle in the top-right)
-4. Click **Load unpacked** and select the `diff-sender` folder
+4. Click **Load unpacked** and select the `context-sender` folder
 5. Pin the extension from the puzzle-piece menu for quick access
 
 ## Usage
@@ -42,7 +42,7 @@ You can then paste the content into ChatGPT, Claude, or any other LLM for review
    - GitLab MR (e.g. `https://gitlab.com/group/project/-/merge_requests/113`)
    - GitHub PR (e.g. `https://github.com/owner/repo/pull/42`)
    - Jira ticket (e.g. `https://your-org.atlassian.net/browse/PROJ-123`)
-2. Click the **Diff Sender** extension icon
+2. Click the **Context Sender** extension icon
 3. Choose **Copy to Clipboard** or **Download**
 4. Paste the content into your preferred LLM
 
@@ -62,7 +62,7 @@ No data is collected or sent anywhere. Content is fetched directly from the sour
 ## Project Structure
 
 ```
-diff-sender/
+context-sender/
 ├── manifest.json      # Extension manifest (V3)
 ├── popup.html         # Extension popup UI
 ├── popup.css          # Popup styles
