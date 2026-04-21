@@ -29,7 +29,8 @@
         "*://*.gitlab.com/*/-/merge_requests/*",
         "*://*/*/-/merge_requests/*",
         "*://github.com/*/pull/*",
-        "*://*.github.com/*/pull/*"
+        "*://*.github.com/*/pull/*",
+        "*://*.atlassian.net/*"
       ],
       "js": ["content.js"],
       "run_at": "document_idle"
