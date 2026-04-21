@@ -20,21 +20,29 @@ function showState(name) {
 // URL helpers
 // ---------------------------------------------------------------------------
 
-// Matches GitLab MR URLs like:
-//   https://gitlab.com/group/project/-/merge_requests/113
-//   https://gitlab.com/group/project/-/merge_requests/113/diffs
-//   https://gitlab.example.com/group/sub/project/-/merge_requests/42
-const MR_PATTERN = /^(https?:\/\/[^/]+\/.+\/-\/merge_requests\/(\d+))(\/.*)?$/;
+const GITLAB_PATTERN = /^(https?:\/\/[^/]+\/.+\/-\/merge_requests\/(\d+))(\/.*)?$/;
+const GITHUB_PATTERN = /^(https?:\/\/[^/]+\/([^/]+\/[^/]+)\/pull\/(\d+))(\/.*)?$/;
 
-function parseMrUrl(url) {
-  const m = url.match(MR_PATTERN);
-  if (!m) return null;
-  return { base: m[1], mrNumber: m[2] };
+function parseUrl(url) {
+  const gl = url.match(GITLAB_PATTERN);
+  if (gl) {
+    return { platform: "gitlab", base: gl[1], number: gl[2], label: `MR !${gl[2]}` };
+  }
+
+  const gh = url.match(GITHUB_PATTERN);
+  if (gh) {
+    return { platform: "github", base: gh[1], number: gh[3], repo: gh[2], label: `PR #${gh[3]}` };
+  }
+
+  return null;
 }
 
-function rawDiffUrl(base) {
-  // merge_requests/113 → merge_requests/113.diff
-  return base + ".diff";
+function rawDiffUrl(parsed) {
+  if (parsed.platform === "gitlab") {
+    return parsed.base + ".diff";
+  }
+  // GitHub: https://github.com/owner/repo/pull/42.diff
+  return parsed.base + ".diff";
 }
 
 // ---------------------------------------------------------------------------
@@ -44,35 +52,36 @@ function rawDiffUrl(base) {
 let cachedDiff = null;
 let currentBase = null;
 
-async function fetchDiff(base) {
-  if (cachedDiff && currentBase === base) return cachedDiff;
+async function fetchDiff(parsed) {
+  if (cachedDiff && currentBase === parsed.base) return cachedDiff;
 
-  const url = rawDiffUrl(base);
+  const url = rawDiffUrl(parsed);
   const resp = await fetch(url, { credentials: "include" });
 
   if (!resp.ok) {
-    throw new Error(`Failed to fetch diff (HTTP ${resp.status}). Make sure you're logged in to GitLab.`);
+    const platformName = parsed.platform === "github" ? "GitHub" : "GitLab";
+    throw new Error(`Failed to fetch diff (HTTP ${resp.status}). Make sure you're logged in to ${platformName}.`);
   }
 
   const text = await resp.text();
   if (!text.trim()) {
-    throw new Error("Diff is empty — the MR may have no changes.");
+    throw new Error("Diff is empty — the PR/MR may have no changes.");
   }
 
   cachedDiff = text;
-  currentBase = base;
+  currentBase = parsed.base;
   return text;
 }
 
-async function handleAction(base, action) {
+async function handleAction(parsed, action) {
   showState("loading");
   try {
-    const diff = await fetchDiff(base);
+    const diff = await fetchDiff(parsed);
 
     if (action === "copy") {
       await navigator.clipboard.writeText(diff);
     } else {
-      downloadFile(diff, base);
+      downloadFile(diff, parsed);
     }
 
     showState("success");
@@ -83,11 +92,16 @@ async function handleAction(base, action) {
   }
 }
 
-function downloadFile(content, base) {
-  const parts = base.split("/");
-  const mrNum = parts[parts.length - 1];
-  const project = parts.slice(3, -3).join("-"); // rough project slug
-  const filename = `${project}-mr-${mrNum}.diff`;
+function downloadFile(content, parsed) {
+  let filename;
+  if (parsed.platform === "github") {
+    const slug = parsed.repo.replace("/", "-");
+    filename = `${slug}-pr-${parsed.number}.diff`;
+  } else {
+    const parts = parsed.base.split("/");
+    const project = parts.slice(3, -3).join("-");
+    filename = `${project}-mr-${parsed.number}.diff`;
+  }
 
   const blob = new Blob([content], { type: "text/plain" });
   const url = URL.createObjectURL(blob);
@@ -109,26 +123,26 @@ async function init() {
     return;
   }
 
-  const parsed = parseMrUrl(tab.url);
+  const parsed = parseUrl(tab.url);
   if (!parsed) {
     showState("notMr");
     return;
   }
 
-  mrInfo.textContent = `MR !${parsed.mrNumber} detected`;
+  mrInfo.textContent = `${parsed.label} detected`;
   showState("ready");
 
   document.getElementById("btn-copy").addEventListener("click", () => {
-    handleAction(parsed.base, "copy");
+    handleAction(parsed, "copy");
   });
 
   document.getElementById("btn-download").addEventListener("click", () => {
-    handleAction(parsed.base, "download");
+    handleAction(parsed, "download");
   });
 
   document.getElementById("btn-retry").addEventListener("click", () => {
     cachedDiff = null;
-    handleAction(parsed.base, "copy");
+    handleAction(parsed, "copy");
   });
 }
 
